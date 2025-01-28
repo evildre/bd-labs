@@ -1,0 +1,448 @@
+\documentclass{article}
+\usepackage{settings}
+
+
+\date{\today}
+
+\begin{document}
+\thispagestyle{empty}
+\begin{center}
+    \LARGE\textbf{МИНОБРНАУКИ РОССИИ\\
+        САНКТ-ПЕТЕРБУРГСКИЙ ГОСУДАРСТВЕННЫЙ\\
+        ЭЛЕКТРОТЕХНИЧЕСКИЙ УНИВЕРСИТЕТ\\
+        "ЛЭТИ"\ ИМ. В.И.УЛЬЯНОВА(ЛЕНИНА)\\
+        Кафедра МО ЭВМ}\\[4cm]
+    \Large\textbf{ОТЧЁТ}\\[0.2cm]
+    \Large\textbf{по лабораторной работе}\\[0.1cm]
+    \Large\textbf{по дисциплине <<Базы данных>>}\\[0.1cm]
+    \Large\textbf{Тема: <<Реализация базы данных в СУБД PostgreSQL>>.}\\[3cm]
+\end{center}
+\Large{Студент гр. 1304 \qquad \qquad \quad \underline{\hspace{6cm}} \qquad \qquad Мусаев А.И.}\\[0.5cm]
+\Large{Преподаватель \qquad \qquad \qquad \underline{\hspace{6cm}} \qquad \qquad Заславский М.М.}\\[3.5cm]
+\begin{center}
+    Санкт-Петербург\\
+    2023
+\end{center}
+\newpage
+
+\textbf{Цель работы}
+
+Изучение реляционной базы данных на примере Postgresql. Написание запросов на создание таблиц, вставки данных в таблиц, а также также написание запросов к базе данных. 
+
+\textbf{Задание}
+
+Вариант - 16.
+
+Пусть требуется создать программную систему, предназначенную для врачей и работников регистратуры поликлиники. Такая система должна хранить сведения об участках, которые относятся к поликлинике, о расписании работы участковых врачей, информацию о врачах, а также карточки пациентов. Карточка имеет номер, в нее заносятся сведения о каждом посещении поликлиники пациентом: дата посещения, жалобы, предварительный диагноз, назначения, выписан или нет больничный лист, и, если выписан, то на какой срок, имя врача. В карточке на первой странице указаны также фамилия, имя, отчество пациента, его домашний адрес, пол и возраст, номер страхового полиса, дата заполнения карточки. В расписании работы врачей указывается, на каком участке работает врач, дни и часы приема, номер кабинета. Врач может обслуживать более одного участка. В случае увольнения врача его участок(участки)передается другим врачам. Данные о враче, которые хранятся в БД, - это фамилия, имя отчество, категория, стаж работы, дата рождения. В карточку больного при каждом его посещении поликлиники врачом заносится очередная запись. Работники регистратуры регистрируют пациента, заполняя первую страницу его карточки. Уволить врача имеет право только заведующий поликлиникой. Он удаляет из базы сведения о враче и передает его больных другому врачу.
+
+Работникам поликлиники могут потребоваться следующие сведения:
+
+\begin{itemize}
+    \item Адрес данного больного, дата последнего посещения поликлиники и диагноз?
+    \item Фамилия и инициалы лечащего врача данного больного?
+    \item Номер кабинета, дни и часы приема данного врача?
+    \item Больные, находящиеся в данный момент на лечении у данного врача(не истек срок больничного листа);
+    \item Назначения врачей при указанном заболевании?
+    \item Кто работает в данный момент в указанном кабинете?
+    \item Сколько раз за прошедший месяц обращался в поликлинику указанный больной?
+    \item Какое количество больных обслужил за прошедший месяц каждый из врачей поликлиники?
+\end{itemize}
+
+
+\textbf{Выполнение работы}
+
+Для реализации СУБД был установлен pgAdmin4
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{1.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Реализуем каждый из запросов.
+
+Адрес данного больного, дата последнего посещения поликлиники и диагноз?
+
+\begin{minted}{sql}
+SELECT Patient.address AS "Адрес",
+       Visit.visitDate AS "Дата последнего посещения",
+       Visit.diagnosis AS "Диагноз"
+FROM Patient
+JOIN Visit ON Patient.patientID = Patient.patientID
+WHERE Patient.surname = 'Лобанов'
+ORDER BY Visit.visitDate DESC
+LIMIT 1;
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{2.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Фамилия и инициалы лечащего врача данного больного?
+
+\begin{minted}{sql}
+SELECT CONCAT(d.surname, ' ', 
+SUBSTRING(d.name, 1, 1), '.', SUBSTRING(d.patronymic, 1, 1), '.') 
+    AS doctor_name,
+       v.diagnosis AS diagnosis,
+       v.visitDate + v.term AS end_date
+FROM Doctor d
+JOIN Visit v ON d.doctorID = v.doctorID
+JOIN Patient p ON v.patientID = p.patientID
+WHERE p.surname = 'Поршнев';
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{3.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Номер кабинета, дни и часы приема данного врача?
+
+\begin{minted}{sql}
+SELECT DISTINCT ds.cabinet, ds.receptionDate
+FROM DoctorSchedule ds
+JOIN Doctor d ON ds.doctorID = d.doctorID
+WHERE d.surname = 'Киндий';
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{4.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Больные, находящиеся в данный момент на лечении у данного врача(не истек срок больничного листа);
+
+\begin{minted}{sql}
+SELECT p.surname, p.name, p.patronymic, v.visitDate, v.diagnosis, 
+v.appointments, v.complaints
+FROM Patient p
+JOIN Visit v ON p.patientID = v.patientID
+JOIN Doctor d ON v.doctorID = d.doctorID
+WHERE d.surname = 'Крылов' AND 
+(v.visitDate + v.term) >= TO_DATE('25/10/2023', 'DD/MM/YYYY');   
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{5.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Назначения врачей при указанном заболевании?
+
+\begin{minted}{sql}
+SELECT v.appointments
+FROM Visit v
+JOIN Doctor d ON v.doctorID = d.doctorID
+WHERE v.diagnosis = 'Грипп';
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{6.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Кто работает в данный момент в указанном кабинете?
+
+\begin{minted}{sql}
+SELECT Doctor.surname, Doctor.name, Doctor.patronymic, 
+DoctorSchedule.cabinet
+FROM Doctor
+JOIN DoctorSchedule ON Doctor.doctorID = DoctorSchedule.doctorID
+WHERE DoctorSchedule.receptionDate = TO_DATE('23/10/2023', 'DD/MM/YYYY') 
+AND DoctorSchedule.nameArea = 'Северный округ' 
+AND DoctorSchedule.cabinet = 101; 
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{7.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Сколько раз за прошедший месяц обращался в поликлинику указанный больной?
+
+\begin{minted}{sql}
+SELECT COUNT(*) AS total_visits
+FROM Visit
+JOIN Patient ON Visit.patientID = Patient.patientID
+WHERE Patient.surname = 'Лобанов'
+AND EXTRACT(MONTH FROM Visit.visitDate) = 10
+AND EXTRACT(YEAR FROM Visit.visitDate) = 2023;
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{8.jpg}
+\label{fig:mpr}
+\end{figure}
+
+Какое количество больных обслужил за прошедший месяц каждый из врачей поликлиники?
+
+\begin{minted}{sql}
+SELECT D.surname, D.name, D.patronymic, COUNT(V.visitID) AS numPatients
+FROM Doctor D
+JOIN DoctorSchedule DS ON D.doctorID = DS.doctorID
+JOIN Visit V ON DS.scheduleID = V.doctorID
+WHERE V.visitDate >= TO_DATE('01/10/2023', 'DD/MM/YYYY') AND 
+V.visitDate <= TO_DATE('31/10/2023', 'DD/MM/YYYY')
+GROUP BY D.surname, D.name, D.patronymic
+ORDER BY numPatients DESC;
+\end{minted}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{9.jpg}
+\label{fig:mpr}
+\end{figure}
+
+\textbf{Вывод}
+
+Изучены основы работы с реляционной базой данных Postgresql, а также созданы таблицы, вставлены в них данные и выполнены запросы к базе данных.
+
+\newpage
+
+\textbf{Приложение A}
+
+Ссылки:
+
+\href{https://www.db-fiddle.com/f/toVfemvCcHmpdVpWcMDcuL/0}{Fiddle}
+
+\href{https://github.com/moevm/sql-2023-1304/pull/47}{PR}
+
+\textbf{Приложение B}
+
+Исходный код:
+
+{\normalsize
+\begin{minted}{sql}
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+CREATE TABLE Clinic(
+	title VARCHAR(255) NOT NULL PRIMARY KEY
+);
+
+CREATE TABLE SelectionClinic(
+	nameArea VARCHAR(255) NOT NULL PRIMARY KEY,
+	title VARCHAR(255),
+	FOREIGN KEY (title) REFERENCES Clinic(title) ON DELETE CASCADE
+);
+
+CREATE TABLE Doctor(
+	doctorID SERIAL NOT NULL PRIMARY KEY,
+	surname VARCHAR(255),
+	name VARCHAR(255),
+	patronymic VARCHAR(255),
+	category VARCHAR(255),
+	birthDate DATE
+);
+
+CREATE TABLE DoctorSchedule(
+	scheduleID SERIAL NOT NULL PRIMARY KEY,
+	receptionDate DATE,
+	nameArea VARCHAR(255),
+	cabinet INT,
+	doctorID INT,
+	FOREIGN KEY (nameArea) REFERENCES selectionClinic(nameArea) ON DELETE CASCADE
+);
+
+CREATE TABLE Patient(
+	patientID SERIAL NOT NULL PRIMARY KEY,
+	surname VARCHAR(255),
+	name VARCHAR(255),
+	patronymic VARCHAR(255),
+	address VARCHAR(255),
+	sex VARCHAR(2),
+	age INT
+);
+
+
+CREATE TABLE Visit(
+	visitID SERIAL NOT NULL PRIMARY KEY,
+	visitDate DATE,
+	diagnosis VARCHAR(256),
+	appointments VARCHAR(256),
+	complaints TEXT,
+	givenLeave BOOLEAN,
+	term INT,
+	patientID INT,
+	doctorID INT,
+	FOREIGN KEY (patientID) REFERENCES Patient(patientID) ON DELETE CASCADE,
+	FOREIGN KEY (doctorID) REFERENCES Doctor(doctorID) ON DELETE CASCADE
+);
+
+INSERT INTO Clinic(title)
+VALUES 
+	('Пироговка'),
+	('Сеченовка'),
+	('Поповка');
+	
+INSERT INTO SelectionClinic(nameArea, title)
+VALUES
+	('Северный округ', 'Поповка'),
+	('Южный округ', 'Поповка'),
+	('Дзержинский район', 'Пироговка'),
+	('Промышленный район', 'Пироговка'),
+	('Центральный район', 'Сеченовка'),
+	('Ленинский район', 'Сеченовка');
+	
+INSERT INTO Doctor(surname, name, patronymic, category, birthdate)
+VALUES
+	('Киндий', 'Михаил', 'Иванович', 'Психиатор', TO_DATE('16/03/2001', 'DD/MM/YYYY')),
+	('Старков', 'Иван', 'Андреевич', 'Дерматолог', TO_DATE('24/02/2001', 'DD/MM/YYYY')),
+	('Крылов', 'Андрей', 'Владиславович', 'Хирург', TO_DATE('03/06/1999', 'DD/MM/YYYY')),
+	('Артамонов', 'Владислав', 'Даниилович', 'Гастроэнтеролог', TO_DATE('03/09/1999', 'DD/MM/YYYY')),
+	('Шурубцов', 'Даниил', 'Егорович', 'Психиатор', TO_DATE('13/01/2004', 'DD/MM/YYYY')),
+	('Угнивенко', 'Егор', 'Кириллович', 'Инфекционист', TO_DATE('16/10/2002', 'DD/MM/YYYY')),
+	('Кузнецов', 'Кирилл', 'Сергеевич', 'Крендеолог', TO_DATE('27/08/2002', 'DD/MM/YYYY')),
+	('Зеленцов', 'Сергей', 'Романович', 'Дерматолог', TO_DATE('17/09/1995', 'DD/MM/YYYY')),
+	('Соцков', 'Роман', 'Никитич', 'Гомолог', TO_DATE('03/12/1999', 'DD/MM/YYYY')),
+	('Зюзюков', 'Никита', 'Артурович', 'Стоматолог', TO_DATE('11/06/2003', 'DD/MM/YYYY')),
+	('Мусаев', 'Артур', 'Михайлович', 'Педиатр', TO_DATE('13/06/2003', 'DD/MM/YYYY')),
+	('Ширяев',' Егор', 'Артурович', 'Инфекционист', TO_DATE('06/05/2001', 'DD/MM/YYYY'));
+
+INSERT INTO DoctorSchedule(receptionDate, nameArea, cabinet, doctorID)
+VALUES 
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Северный округ', 101, 1),
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Южный округ', 102, 2),
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Дзержинский район', 103, 3),
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Промышленный район', 104, 4),
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Центральный район', 105, 5),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Северный округ', 106, 6),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Южный округ', 107, 7),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Дзержинский район', 108, 8),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Промышленный район', 109, 9),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Центральный район', 110, 10),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Северный округ', 111, 11),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Южный округ', 112, 1),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Дзержинский район', 113, 2),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Промышленный район', 114, 3),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Центральный район', 115, 4),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Северный округ', 116, 5),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Южный округ', 117, 6),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Дзержинский район', 118, 7),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Промышленный район', 119, 8),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Центральный район', 120, 9),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Северный округ', 121, 10),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Южный округ', 122, 11),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Дзержинский район', 123, 1),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Промышленный район', 124, 2),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Центральный район', 125, 3);
+
+INSERT INTO Patient(surname, name, patronymic, address, sex, age)
+VALUES
+	('Поршнев', 'Роман', 'Дмитриевич', 'Фрунзенская 10', 'М', 20),
+	('Кривоченко', 'Дмитрий', 'Михайлович', 'Покерная 217', 'М', 20),
+	('Новицкий', 'Михаил', 'Даниилович', 'Лесная 532', 'М', 20),
+	('Павлов', 'Даниил', 'Романович', 'Беговая 420', 'М', 20),
+	('Басыров', 'Владимир', 'Егорович', 'Петербургская 1', 'М', 20),
+	('Лобанов', 'Егор', 'Александрович', 'Королева 239', 'М', 20),
+	('Маркуш', 'Александр', 'Артурович', 'Белорусская 1', 'М', 20),
+	('Мусаев', 'Артур', 'Романович', 'Творожок 15', 'М', 20);
+	
+INSERT INTO Visit(visitDate, diagnosis, appointments, complaints, givenLeave, term, patientID, doctorID)
+VALUES 
+    (TO_DATE('15/10/2023', 'DD/MM/YYYY'), 'Грипп', 'Прописаны антибиотики и отдых', 'Температура, кашель', TRUE, 7, 1, 2),
+    (TO_DATE('15/10/2023', 'DD/MM/YYYY'), 'Аллергия', 'Назначены антигистаминные препараты', 'Сыпь, зуд', FALSE, 0, 2, 3),
+    (TO_DATE('16/10/2023', 'DD/MM/YYYY'), 'Пневмония', 'Назначены антибиотики и режим', 'Высокая температура, боль в груди', TRUE, 10, 3, 4),
+    (TO_DATE('16/10/2023', 'DD/MM/YYYY'), 'Травма руки', 'Наложен гипс', 'Упал, болят рука и запястье', TRUE, 14, 4, 5),
+    (TO_DATE('17/10/2023', 'DD/MM/YYYY'), 'Гастрит', 'Диета и противовоспалительные препараты', 'Боль в желудке, изжога', FALSE, 0, 5, 6),
+    (TO_DATE('17/10/2023', 'DD/MM/YYYY'), 'Мигрень', 'Назначены анальгетики и покой', 'Сильная головная боль, тошнота', TRUE, 5, 6, 7),
+    (TO_DATE('18/10/2023', 'DD/MM/YYYY'), 'Операция по удалению аппендикса', 'Экстренная операция', 'Сильная боль в правом боку', TRUE, 1, 7, 8),
+    (TO_DATE('18/10/2023', 'DD/MM/YYYY'), 'Зубная боль', 'Назначено лечение и анестезия', 'Пульсирующая боль в зубе', TRUE, 3, 8, 9),
+    (TO_DATE('19/10/2023', 'DD/MM/YYYY'), 'Грипп', 'Прописаны антибиотики и отдых', 'Температура, кашель', TRUE, 7, 1, 10),
+    (TO_DATE('19/10/2023', 'DD/MM/YYYY'), 'Аллергия', 'Назначены антигистаминные препараты', 'Сыпь, зуд', FALSE, 0, 2, 11),
+    (TO_DATE('20/10/2023', 'DD/MM/YYYY'), 'Пневмония', 'Назначены антибиотики и режим', 'Высокая температура, боль в груди', TRUE, 10, 3, 1),
+    (TO_DATE('20/10/2023', 'DD/MM/YYYY'), 'Травма руки', 'Наложен гипс', 'Упал, болят рука и запястье', TRUE, 14, 4, 2),
+    (TO_DATE('21/10/2023', 'DD/MM/YYYY'), 'Гастрит', 'Диета и противовоспалительные препараты', 'Боль в желудке, изжога', FALSE, 0, 5, 3),
+    (TO_DATE('21/10/2023', 'DD/MM/YYYY'), 'Мигрень', 'Назначены анальгетики и покой', 'Сильная головная боль, тошнота', TRUE, 5, 6, 4),
+    (TO_DATE('22/10/2023', 'DD/MM/YYYY'), 'Операция по удалению аппендикса', 'Экстренная операция', 'Сильная боль в правом боку', TRUE, 1, 7, 5),
+    (TO_DATE('22/10/2023', 'DD/MM/YYYY'), 'Зубная боль', 'Назначено лечение и анестезия', 'Пульсирующая боль в зубе', TRUE, 3, 8, 6),
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Ожог', 'Лечение ожога и перевязка', 'Боль, покраснение кожи', TRUE, 10, 6, 7),
+    (TO_DATE('23/10/2023', 'DD/MM/YYYY'), 'Синусит', 'Противовоспалительные препараты и обильное питье', 'Заложенность носа, головная боль', TRUE, 7, 2, 8),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Операция по удалению аппендикса', 'Экстренная операция', 'Сильная боль в правом боку', TRUE, 1, 7, 9),
+    (TO_DATE('24/10/2023', 'DD/MM/YYYY'), 'Зубная боль', 'Назначено лечение и анестезия', 'Пульсирующая боль в зубе', TRUE, 3, 8, 10),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Ожог', 'Лечение ожога и перевязка', 'Боль, покраснение кожи', TRUE, 10, 6, 11),
+    (TO_DATE('25/10/2023', 'DD/MM/YYYY'), 'Синусит', 'Противовоспалительные препараты и обильное питье', 'Заложенность носа, головная боль', TRUE, 7, 2, 1),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Операция по удалению аппендикса', 'Экстренная операция', 'Сильная боль в правом боку', TRUE, 1, 7, 2),
+    (TO_DATE('26/10/2023', 'DD/MM/YYYY'), 'Зубная боль', 'Назначено лечение и анестезия', 'Пульсирующая боль в зубе', TRUE, 3, 8, 3),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Ожог', 'Лечение ожога и перевязка', 'Боль, покраснение кожи', TRUE, 10, 6, 4),
+    (TO_DATE('27/10/2023', 'DD/MM/YYYY'), 'Синусит', 'Противовоспалительные препараты и обильное питье', 'Заложенность носа, головная боль', TRUE, 7, 2, 5),
+    (TO_DATE('28/10/2023', 'DD/MM/YYYY'), 'Операция по удалению аппендикса', 'Экстренная операция', 'Сильная боль в правом боку', TRUE, 1, 7, 6),
+    (TO_DATE('28/10/2023', 'DD/MM/YYYY'), 'Зубная боль', 'Назначено лечение и анестезия', 'Пульсирующая боль в зубе', TRUE, 3, 8, 7),
+    (TO_DATE('29/10/2023', 'DD/MM/YYYY'), 'Ожог', 'Лечение ожога и перевязка', 'Боль, покраснение кожи', TRUE, 10, 6, 8),
+    (TO_DATE('29/10/2023', 'DD/MM/YYYY'), 'Синусит', 'Противовоспалительные препараты и обильное питье', 'Заложенность носа, головная боль', TRUE, 7, 2, 9),
+    (TO_DATE('30/10/2023', 'DD/MM/YYYY'), 'Операция по удалению аппендикса', 'Экстренная операция', 'Сильная боль в правом боку', TRUE, 1, 7, 10),
+    (TO_DATE('30/10/2023', 'DD/MM/YYYY'), 'Зубная боль', 'Назначено лечение и анестезия', 'Пульсирующая боль в зубе', TRUE, 3, 8, 11),
+    (TO_DATE('31/10/2023', 'DD/MM/YYYY'), 'Ожог', 'Лечение ожога и перевязка', 'Боль, покраснение кожи', TRUE, 10, 6, 1),
+    (TO_DATE('31/10/2023', 'DD/MM/YYYY'), 'Синусит', 'Противовоспалительные препараты и обильное питье', 'Заложенность носа, головная боль', TRUE, 7, 2, 3);
+
+	
+/*SELECT Patient.address AS "Адрес",
+       Visit.visitDate AS "Дата последнего посещения",
+       Visit.diagnosis AS "Диагноз"
+FROM Patient
+JOIN Visit ON Patient.patientID = Patient.patientID
+WHERE Patient.surname = 'Лобанов'
+ORDER BY Visit.visitDate DESC
+LIMIT 1;*/
+
+/*SELECT CONCAT(d.surname, ' ', SUBSTRING(d.name, 1, 1), '.', SUBSTRING(d.patronymic, 1, 1), '.') AS doctor_name,
+       v.diagnosis AS diagnosis,
+       v.visitDate + v.term AS end_date
+FROM Doctor d
+JOIN Visit v ON d.doctorID = v.doctorID
+JOIN Patient p ON v.patientID = p.patientID
+WHERE p.surname = 'Поршнев';
+
+SELECT DISTINCT ds.cabinet, ds.receptionDate
+FROM DoctorSchedule ds
+JOIN Doctor d ON ds.doctorID = d.doctorID
+WHERE d.surname = 'Киндий';
+
+
+SELECT p.surname, p.name, p.patronymic, v.visitDate, v.diagnosis, v.appointments, v.complaints
+FROM Patient p
+JOIN Visit v ON p.patientID = v.patientID
+JOIN Doctor d ON v.doctorID = d.doctorID
+WHERE d.surname = 'Крылов' AND (v.visitDate + v.term) >= TO_DATE('25/10/2023', 'DD/MM/YYYY');
+
+SELECT v.appointments
+FROM Visit v
+JOIN Doctor d ON v.doctorID = d.doctorID
+WHERE v.diagnosis = 'Грипп';
+
+
+SELECT Doctor.surname, Doctor.name, Doctor.patronymic, DoctorSchedule.cabinet
+FROM Doctor
+JOIN DoctorSchedule ON Doctor.doctorID = DoctorSchedule.doctorID
+WHERE DoctorSchedule.receptionDate = TO_DATE('23/10/2023', 'DD/MM/YYYY') -- Укажите нужную дату
+AND DoctorSchedule.nameArea = 'Северный округ' -- Укажите нужный район
+AND DoctorSchedule.cabinet = 101; -- Укажите нужный кабинет
+
+SELECT COUNT(*) AS total_visits
+FROM Visit
+JOIN Patient ON Visit.patientID = Patient.patientID
+WHERE Patient.surname = 'Лобанов'
+AND EXTRACT(MONTH FROM Visit.visitDate) = 10
+AND EXTRACT(YEAR FROM Visit.visitDate) = 2023;
+*/
+
+SELECT D.surname, D.name, D.patronymic, COUNT(V.visitID) AS numPatients
+FROM Doctor D
+JOIN DoctorSchedule DS ON D.doctorID = DS.doctorID
+JOIN Visit V ON DS.scheduleID = V.doctorID
+WHERE V.visitDate >= TO_DATE('01/10/2023', 'DD/MM/YYYY') AND V.visitDate <= TO_DATE('31/10/2023', 'DD/MM/YYYY')
+GROUP BY D.surname, D.name, D.patronymic
+ORDER BY numPatients DESC;
+/*
+*/
+\end{minted}
+}
+\end{document}
